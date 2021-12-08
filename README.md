@@ -1,2 +1,2 @@
 # newlicycle
-this is the second version of the licycle project
+this is the version 2 licycle project
