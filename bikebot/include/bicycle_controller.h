@@ -47,10 +47,10 @@ class bicycle_controller{
 public:
 	bicycle_controller(Bike_state *robot,char *ch);
 	void initial_param();
-	int get_action(Bike_command *cmd,int eic_able);
+	void get_action(Bike_command *cmd,int eic_able,int include_u,int eic_unable,float leg_torque);
 	double get_timer();
 	Input get_input();
-	void balanceCalc(int flag);
+	void balanceCalc();
 	void balance();
 	void stateUpdate();
 	void reset();

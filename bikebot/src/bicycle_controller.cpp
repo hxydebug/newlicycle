@@ -6,6 +6,7 @@ ofstream dataFile;
 double rollMaxing = 2.0*PI/180;
 int onlyonce = 1;
 int eic_flag = 1;
+float leg_t = 0;
 int t_last = 0;
 float t_record = 0;
 Eigen::Vector3d velocity;
@@ -33,6 +34,10 @@ double body_b2 = 10, body_b1 = 6, body_b0 =3;
 // double body_b2 = 3, body_b1 = 13, body_b0 = 10;
 double body_a1 = 25, body_a0 = 180;
 // double body_a1 = 5, body_a0 = 11;
+
+// double body_b2 = 10, body_b1 = 6, body_b0 = 3;
+// double body_a1 = 1, body_a0 = 1;
+
 double body_k = 1.05;
 
 double body_vr = 1.2;
@@ -54,7 +59,7 @@ bicycle_controller::bicycle_controller(Bike_state *robot,char *ch){
 	bike = robot;
 	bicycle_controller::initial_param();
 	char result[100] = {0};
-	sprintf(result, "/home/hxy/1207/bike_data%s.txt", ch);
+	sprintf(result, "/home/hxy/1209/bike_data%s.txt", ch);
 	dataFile.open(result, ofstream::app);
 }
 
@@ -95,11 +100,28 @@ void bicycle_controller::reset(){
 	bikebot.x = bikebot.xe;
 }
 
-int bicycle_controller::get_action(Bike_command *cmd,int eic_able){
+void bicycle_controller::get_action(Bike_command *cmd,int eic_able,int include_u,int eic_unable,float leg_torque){
+	
+	if(USE_Leg==1){
+		if(eic_unable==1){
+			eic_flag = 0;
+		}
+		if(eic_able==1){
+			leg_t = 0;
+		}
+		if(include_u==1){
+			eic_flag = 1;
+			leg_t = leg_torque;
+		}
+
+	}
+	
 	///run the controller
 	bicycle_controller::stateUpdate();
-	bicycle_controller::balanceCalc(eic_flag);
+	bicycle_controller::balanceCalc();
 	// bicycle_controller::balance();
+
+	// cout<<leg_t<<endl;
 
 	///get the control input
 	cmd->phi = phi_cmd;
@@ -114,73 +136,6 @@ int bicycle_controller::get_action(Bike_command *cmd,int eic_able){
 	if(bikebot.timer<0.16){
 		cmd->phi = 0;
 	}
-
-	if(USE_Leg==1){
-		leg_height = hL;
-		if(bikebot.accx<-0.5 && t_last==0){
-			cout<<"touch!"<<endl;
-			t_last=1;
-			eic_flag = 0;
-			t_record = bikebot.timer;
-		}
-		if(eic_flag == 0){
-			// cmd->phi = 0;
-			// if(bikebot.varphi<-rollMaxing){
-			// 	cmd->phi = 1;
-			// }
-			// if(bikebot.varphi>rollMaxing){
-			// 	cmd->phi = -1;
-			// }
-			bikebot.last_target = 0;
-			// LIMIT_STEER = 0.87;
-
-		}
-		if(eic_able==1){
-			countt=5;
-			// t_last=0;
-			// LIMIT_STEER =0.87;
-			// bikebot.y = 0;
-		}
-		if(countt>0){
-			if(fabs(bikebot.varphi)<2*PI/180){
-				eic_flag=1;
-			}
-			if(countt==1){
-				eic_flag=1;
-			}
-
-			countt--;
-		}
-
-		// if(eic_flag==1){
-			// if(LIMIT_STEER<0.92){
-			// 	LIMIT_STEER += 0.005;
-			// }
-			// else if(LIMIT_STEER<3){
-			// 	LIMIT_STEER += 0.05;
-			// }
-		// }
-
-		if(bikebot.timer-t_record>1.2){
-			t_last=0;
-		}
-
-		// if(bikebot.timer>4.2){
-		// 	LIMIT_STEER = 3;
-		// }
-
-		if(fabs(bikebot.varphi)>rollMaxing && bikebot.timer>0.5 && onlyonce==1){
-			onlyonce = 0;
-			return 0;
-		}
-		else{
-			return 1;
-		}
-	}
-	else{
-		return 1;
-	}
-
 }
 
 double bicycle_controller::get_height(void){
@@ -279,7 +234,7 @@ void bicycle_controller::stateUpdate(){
 	// std::cout<<"vr: "<<bikebot.vr<<std::endl;
 }
 
-void bicycle_controller::balanceCalc(int flag){
+void bicycle_controller::balanceCalc(){
 	/*变量读取*/
 	double vr = bikebot.vr;		double dvr = 0;
 	double psi = bikebot.psi;
@@ -355,7 +310,7 @@ void bicycle_controller::balanceCalc(int flag){
 	double f_varphi = (bikebot.mb*bikebot.hb*vr + bikebot.mb*bikebot.hb*bikebot.hb*sinvar*dpsi)*cosvar*dpsi
 				+bikebot.mb*bikebot.hb*bikebot.g*sinvar + xxx*dpsi*cosvar/vr;
 	double g_psi = bikebot.mb*bikebot.hb*bikebot.lb*cosvar;
-	double u_psi_int = (-f_varphi + bikebot.Jt*v_psi_int)/g_psi;
+	double u_psi_int = (-f_varphi + bikebot.Jt*v_psi_int+leg_t)/g_psi;
 	//自此，以外部得到的u_r和内部得到的u_psi得到最终控制输入
 
 	/*计算转向角*/
@@ -429,25 +384,33 @@ void bicycle_controller::balance(){
 	bikebot.ye = ye;
 
 	/*External*/
-	//利用控制律计算出前轮轨迹r(2)
-	double u_w_ext1 = ddxe + bikebot.b1 * (dxe - dx) + bikebot.b0 * (xe - x);
-	double u_w_ext2 = ddye + bikebot.b1 * (dye - dy) + bikebot.b0 * (ye - y);
-	//这里速度到一次导我们设为0
+	//利用控制律计算出前轮轨迹r(3)及其一次导和二次导
+    double u_ext1 = ddxe + bikebot.b1 * (dxe - dx) + bikebot.b0 * (xe - x);
+	double u_ext2 = ddye + bikebot.b1 * (dye - dy) + bikebot.b0 * (ye - y);
+	double u_w_ext1 = dddxe + bikebot.b2 * (ddxe - ddx) + bikebot.b1 * (dxe - dx) + bikebot.b0 * (xe - x);
+	double u_w_ext2 = dddye + bikebot.b2 * (ddye - ddy) + bikebot.b1 * (dye - dy) + bikebot.b0 * (ye - y);
+	double du_w_ext1 = ddddxe + bikebot.b2 * (dddxe - u_w_ext1) + bikebot.b1 * (ddxe - ddx) + bikebot.b0 * (dxe - dx);
+	double du_w_ext2 = ddddye + bikebot.b2 * (dddye - u_w_ext2) + bikebot.b1 * (ddye - ddy) + bikebot.b0 * (dye - dy);
+	double ddu_w_ext1 = dddddxe + bikebot.b2 * (ddddxe - du_w_ext1) + bikebot.b1 * (dddxe - u_w_ext1) + bikebot.b0 * (ddxe - ddx);
+	double ddu_w_ext2 = dddddye + bikebot.b2 * (ddddye - du_w_ext2) + bikebot.b1 * (dddye - u_w_ext2) + bikebot.b0 * (ddye - ddy);
+	// double ur = vr*dpsi*dpsi+cospsi*u_w_ext1+sinpsi*u_w_ext2;
+	//这里速度到二次导我们设为0
 	double ur = 0;
-	//计算出满足external条件的u_psi(psi_dot)
-	double u_psi = u_w_ext2/vr/cospsi;
+	//计算出满足external条件的u_psi及其一阶和二阶导
+    double u_ipsi = u_ext2/vr/cospsi; //dpsi
+	double u_psi = -2*dvr*dpsi/vr-sinpsi/vr*u_w_ext1+cospsi/vr*u_w_ext2; //ddpsi
+	double du_psi = -2*((ur*vr-dvr*dvr)/vr/vr*dpsi+dvr/vr*u_psi) - (cospsi*dpsi*vr-sinpsi*dvr)/vr/vr*u_w_ext1 - sinpsi/vr*du_w_ext1
+            + (-sinpsi*dpsi*vr-cospsi*dvr)/vr/vr*u_w_ext2 + cospsi/vr*du_w_ext2; //dddpsi
+    double ddu_psi = (sinpsi*dpsi*dpsi-cospsi*u_psi)/vr*u_w_ext1 - 2*cospsi*dpsi/vr*du_w_ext1 - sinpsi/vr*ddu_w_ext1 //ddddpsi
+            - (cospsi*dpsi*dpsi+sinpsi*u_psi)/vr*u_w_ext2 - 2*sinpsi*dpsi/vr*du_w_ext2 + cospsi/vr*ddu_w_ext2;
 	
 	/*Internal*/
-	// //求解根据u_psi得出的phi
-    // double pre_phi = atan(u_psi*bikebot.l*cosvar/vr/cos(bikebot.epsilon));
-    // //求解Tau_s
-    // double tau_ss = bikebot.mb*bikebot.hb*cos(bikebot.epsilon)*vr*vr/bikebot.l*tan(pre_phi);
-    //求解Tau_s
-    double tau_ss = bikebot.mb*bikebot.hb*vr*cosvar*u_psi;
-    //估计varphie
-    double varphie = asin(-tau_ss/(bikebot.mb*bikebot.hb*bikebot.g));
-    double dvarphie = 0;
-    double ddvarphie = 0;
+    //求解varphie，dvarphie，ddvarphie
+    double varphie = atan(-vr*u_ipsi/bikebot.g);
+    double cosvare = cos(varphie);
+	double sinvare = sin(varphie);
+    double dvarphie = -vr/bikebot.g*u_psi*cosvare*cosvare;
+    double ddvarphie = -vr/bikebot.g*(du_psi*cosvare*cosvare-2*u_psi*cosvare*sinvare*dvarphie);
     bikebot.varphie = varphie;
     bikebot.dvarphie = dvarphie;
     //根据控制律求解合适到控制输入:varphi的二阶导

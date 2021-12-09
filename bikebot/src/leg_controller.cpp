@@ -72,6 +72,7 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 	int impulse_able = 0;
 	this->stance_end = 0;
 	this->stance_begin = 0;
+	this->leg_down = 0;
 	
 	// static int stance_flag[2] = {1,1};
 	static int swdown_flag[2] = {1,1};
@@ -144,6 +145,7 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 					
 					pre_state[leg_dir] = SWING_DOWN;
 					swdown_contr.get_start(angles,pos,leg_dir);
+					this->leg_down = 1;
 					swdown_flag[leg_dir] = 0;
 					// swdown_flag[r_leg] = 0;
 					impact_happened=0;
@@ -165,6 +167,7 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 
 				pre_state[leg_dir] = SWING_DOWN;
 				swdown_contr.get_start(angles,pos,leg_dir);
+				this->leg_down = 1;
 				swdown_flag[leg_dir] = 0;
 				// swdown_flag[l_leg] = 0;
 				impact_happened=0;
@@ -187,6 +190,7 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 		}
 		if(pre_state[i]==STANCE){
 			stance_contr.get_start(i,roll,dvarphi);
+			
 		}
 	}
 
@@ -297,6 +301,10 @@ int leg_controller::get_stance_ifend(void){
 
 int leg_controller::get_stance_ifbegin(void){
 	return this->stance_begin;
+}
+
+int leg_controller::get_swdown_ifbegin(void){
+	return this->leg_down;
 }
 
 double leg_controller::get_global_force(void){

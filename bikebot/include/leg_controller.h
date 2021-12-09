@@ -111,6 +111,7 @@ public:
 	void get_Tau(double Tau);
 	int get_stance_ifend(void);
 	int get_stance_ifbegin(void);
+	int get_swdown_ifbegin(void);
 	double get_global_force(void);
 	void set_height(double height);
 	double get_F(void);
@@ -128,6 +129,7 @@ private:
 
 	int stance_end;
 	int stance_begin;
+	int leg_down;
 
 	std::vector<float> x_position;
 	std::vector<float> z_position;

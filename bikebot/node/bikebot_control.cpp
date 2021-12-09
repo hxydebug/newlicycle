@@ -85,6 +85,12 @@ static int shut_down;
 int eic_able = 0;
 int impact_happen = 0;
 int stance_end = 0;
+int stance_begin = 0;
+int leg_down = 0;
+int leg_up = 0;
+int include_u = 0;
+int eic_unable = 0;
+float optm_tau = 0;
 
 //optimize
 double optm_result;
@@ -592,15 +598,28 @@ void* bikecontrol_thread(void* args)
         //更新机器人状态
         bikestate_update();
         //bike控制 50HZ 
+        float leg_torque = 0;
         if(stance_end == 1){
             eic_able = 1;
             stance_end = 0;
             cout<<"eic_able"<<endl;
         } 
-        if(b_controller.get_action(&bike_cmd,eic_able)==0){
-            impact_happen = 1;
+        if(stance_begin == 1){
+            include_u = 1;
+            stance_begin = 0;
+            leg_torque = optm_tau;
+            cout<<"include_u:"<<leg_torque<<endl;
         }
+        if(leg_down == 1){
+            eic_unable = 1;
+            leg_down = 0;
+            cout<<"eic_unable"<<endl;
+        }
+        b_controller.get_action(&bike_cmd,eic_able,include_u,eic_unable,leg_torque);
         eic_able = 0;
+        include_u = 0;
+        eic_unable = 0;
+        leg_torque = 0;
         //驱动bike执行器
         drive_bike(bike_cmd);
         /********************** running end **********************/
@@ -657,9 +676,18 @@ void* legcontrol_thread(void* args)
         legstate_update();
 
         //leg控制  1000HZ
-        l_controller.get_action(&leg_cmd,impact_happen);
+        if(l_controller.get_action(&leg_cmd,1)==1){
+            leg_up = 1;
+        }
         if(l_controller.get_stance_ifend()==1){
             stance_end = 1;
+        }
+        if(l_controller.get_stance_ifbegin()==1){
+            stance_begin = 1;
+            optm_tau = leg_state.optmT;
+        }
+        if(l_controller.get_swdown_ifbegin()==1){
+            leg_down = 1;
         }
 
         poserror = l_controller.get_error();
@@ -704,7 +732,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/1207/dataFile%s.txt", ch);
+    sprintf(result, "/home/hxy/1209/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
