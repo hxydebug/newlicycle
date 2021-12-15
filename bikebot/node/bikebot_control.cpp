@@ -607,12 +607,13 @@ void* bikecontrol_thread(void* args)
         if(stance_begin == 1){
             include_u = 1;
             stance_begin = 0;
-            leg_torque = optm_tau;
-            cout<<"include_u:"<<leg_torque<<endl;
+            
+            // cout<<"include_u:"<<leg_torque<<endl;
         }
         if(leg_down == 1){
             eic_unable = 1;
             leg_down = 0;
+            leg_torque = optm_tau;
             cout<<"eic_unable"<<endl;
         }
         b_controller.get_action(&bike_cmd,eic_able,include_u,eic_unable,leg_torque);
@@ -684,10 +685,11 @@ void* legcontrol_thread(void* args)
         }
         if(l_controller.get_stance_ifbegin()==1){
             stance_begin = 1;
-            optm_tau = leg_state.optmT;
+            
         }
         if(l_controller.get_swdown_ifbegin()==1){
             leg_down = 1;
+            optm_tau = leg_state.optmT;
         }
 
         poserror = l_controller.get_error();
@@ -732,7 +734,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/1209/dataFile%s.txt", ch);
+    sprintf(result, "/home/hxy/1215/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 

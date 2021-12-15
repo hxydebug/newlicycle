@@ -39,6 +39,7 @@ double body_a1 = 25, body_a0 = 180;
 // double body_a1 = 1, body_a0 = 1;
 
 double body_k = 1.05;
+double limit = 0.2;
 
 double body_vr = 1.2;
 double tire_omega = body_vr/body_R;
@@ -59,7 +60,7 @@ bicycle_controller::bicycle_controller(Bike_state *robot,char *ch){
 	bike = robot;
 	bicycle_controller::initial_param();
 	char result[100] = {0};
-	sprintf(result, "/home/hxy/1209/bike_data%s.txt", ch);
+	sprintf(result, "/home/hxy/1215/bike_data%s.txt", ch);
 	dataFile.open(result, ofstream::app);
 }
 
@@ -104,15 +105,17 @@ void bicycle_controller::get_action(Bike_command *cmd,int eic_able,int include_u
 	
 	if(USE_Leg==1){
 		if(eic_unable==1){
+			limit = 0.4;
 			eic_flag = 0;
+			leg_t = leg_torque;
 		}
 		if(eic_able==1){
 			leg_t = 0;
 		}
-		if(include_u==1){
-			eic_flag = 1;
-			leg_t = leg_torque;
-		}
+		// if(include_u==1){
+		// 	eic_flag = 1;
+			
+		// }
 
 	}
 	
@@ -315,12 +318,13 @@ void bicycle_controller::balanceCalc(){
 
 	/*计算转向角*/
 	double ddpsi;
-	if(eic_flag==1){
-		ddpsi=u_psi_int;
-	}
-	else{
-		ddpsi=u_psi;
-	}
+	// if(eic_flag==1){
+	// 	ddpsi=u_psi_int;
+	// }
+	// else{
+	// 	ddpsi=u_psi;
+	// }
+	ddpsi=u_psi_int;
 	bikebot.new_phi = atan((dpsi+ddpsi*dt)*bikebot.l/cos(bikebot.epsilon)*cosvar/vr)*bikebot.k;
 	double target = -bikebot.new_phi*5.73;
 	if(target > LIMIT_STEER) target = LIMIT_STEER;
@@ -328,7 +332,7 @@ void bicycle_controller::balanceCalc(){
 	bikebot.target = target;
 	
 	//控制限制
-	double limit = 0.2;
+	
 	target = bikebot.target;
 	double last = bikebot.last_target;
 	if(target > last) phi_cmd = (target - last) < limit ? target : last + limit;
