@@ -109,7 +109,7 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 	// 	}
 	// }
 
-	if(leg->accx<-0.5 && timeflag == 0){
+	if(leg->accx<-0.7 && timeflag == 0){
 		impact_happened = 1;
 		timeflag = 1;
 		timecount = 0;

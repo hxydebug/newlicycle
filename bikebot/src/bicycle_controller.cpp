@@ -254,10 +254,10 @@ void bicycle_controller::balanceCalc(){
 	// new_Wt += w*dt; 
 	// xe = x_offset + cr * cos(new_Wt); 	ye =  y_offset + cr*sin(new_Wt);
 	// dxe = -cr * sin(new_Wt) * w;		dye = cr * cos(new_Wt) * w;	
-	// // ddxe = -dye * w; 		 ddye = dxe * w;
-	// // dddxe = -ddye * w; 		 dddye = ddxe * w;
-	// // ddddxe = -dddye * w; 	 ddddye = dddxe * w;
-	// // dddddxe = -ddddye * w; 	 dddddye = ddddxe * w;
+	// ddxe = -dye * w; 		 ddye = dxe * w;
+	// dddxe = -ddye * w; 		 dddye = ddxe * w;
+	// ddddxe = -dddye * w; 	 ddddye = dddxe * w;
+	// dddddxe = -ddddye * w; 	 dddddye = ddddxe * w;
 
 	//走直线
 	dxe = ve; dye = 0; 
