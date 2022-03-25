@@ -105,7 +105,7 @@ Eigen::VectorXd stance_leg_controller::get_action(void){
     Kinematics_global(&r_angle,&r_position,1);
     foot_positions << l_position.x, r_position.x,
                       l_position.y, r_position.y, 
-                      l_position.z, r_position.z;
+                      l_position.z + 0.34, r_position.z + 0.34;
     std::vector<double> force = Cmpc.ComputeContactForces(com_velocity,com_roll,com_droll,footcontact,
                                                         foot_positions,desired_xspeed,desired_roll,0);
     Eigen::Map<Eigen::VectorXd> force_E(force.data(),force.size());

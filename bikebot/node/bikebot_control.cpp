@@ -73,6 +73,8 @@ CANMessage R_msgs[3];
 Leg_command leg_cmd;
 Bike_command bike_cmd;
 Posdiff poserror;
+float bike_timestamp;
+float leg_timestamp;
 
 //if can start
 int bike_begin = 0;
@@ -592,6 +594,7 @@ void* bikecontrol_thread(void* args)
     {
         //计时
         _lastPeriodTime = (float)t.getSeconds();
+        bike_timestamp = _lastPeriodTime;
         t.start();
 
         /********************** running begin **********************/
@@ -670,6 +673,7 @@ void* legcontrol_thread(void* args)
     {
         //计时
         _lastPeriodTime = (float)t.getSeconds();
+        leg_timestamp = _lastPeriodTime;
         t.start();
 
         /********************** running begin **********************/
@@ -734,7 +738,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/1215/dataFile%s.txt", ch);
+    sprintf(result, "/home/hxy/0318/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -774,7 +778,7 @@ void* record_thread(void* args)
                 << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
                 << leg_state.varphi << ", "<< poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
                 << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< optm_result << ", "
+                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< optm_result << ", " << bike_timestamp << ", " << leg_timestamp 
                 << std::endl;
 
 

@@ -33,6 +33,7 @@ double body_Jt = body_m*body_h*body_h + body_Jb;
 double body_b2 = 10, body_b1 = 6, body_b0 =3;
 // double body_b2 = 3, body_b1 = 13, body_b0 = 10;
 double body_a1 = 25, body_a0 = 180;
+// double body_a1 = 10, body_a0 = 50;
 // double body_a1 = 5, body_a0 = 11;
 
 // double body_b2 = 10, body_b1 = 6, body_b0 = 3;
@@ -60,7 +61,7 @@ bicycle_controller::bicycle_controller(Bike_state *robot,char *ch){
 	bike = robot;
 	bicycle_controller::initial_param();
 	char result[100] = {0};
-	sprintf(result, "/home/hxy/1215/bike_data%s.txt", ch);
+	sprintf(result, "/home/hxy/0318/bike_data%s.txt", ch);
 	dataFile.open(result, ofstream::app);
 }
 
@@ -105,7 +106,7 @@ void bicycle_controller::get_action(Bike_command *cmd,int eic_able,int include_u
 	
 	if(USE_Leg==1){
 		if(eic_unable==1){
-			limit = 0.4;
+			limit = 0.5;
 			eic_flag = 0;
 			leg_t = leg_torque;
 		}

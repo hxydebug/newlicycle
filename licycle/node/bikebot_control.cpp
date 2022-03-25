@@ -97,6 +97,7 @@ int leg_up = 0;
 int include_u = 0;
 int eic_unable = 0;
 float optm_tau = 0;
+int stance = 0;
 
 //optimize
 double optm_result;
@@ -604,31 +605,10 @@ void* bikecontrol_thread(void* args)
         //更新机器人状态
         bikestate_update();
         //bike控制 50HZ 
-        // float leg_torque = 0;
-        // if(stance_end == 1){
-        //     eic_able = 1;
-        //     stance_end = 0;
-        //     cout<<"eic_able"<<endl;
-        // } 
-        // if(stance_begin == 1){
-        //     include_u = 1;
-        //     stance_begin = 0;
-            
-        //     // cout<<"include_u:"<<leg_torque<<endl;
-        // }
-        // if(leg_down == 1){
-        //     eic_unable = 1;
-        //     leg_down = 0;
-        //     leg_torque = optm_tau;
-        //     cout<<"eic_unable"<<endl;
-        // }
-        // b_controller.get_action(&bike_cmd,eic_able,include_u,eic_unable,leg_torque);
-        // eic_able = 0;
-        // include_u = 0;
-        // eic_unable = 0;
-        // leg_torque = 0;
-
-        body_v = b_controller.get_action(&bike_cmd);
+        // 0 0 velocity
+        // 1 0.6 velocity
+        // 2 eic 1.2m/s
+        body_v = b_controller.get_action(&bike_cmd,1);
         //驱动bike执行器
         drive_bike(bike_cmd);
         /********************** running end **********************/
@@ -688,31 +668,18 @@ void* legcontrol_thread(void* args)
         //更新数据
         legstate_update();
 
-        float desire_v = 1.2;
+        float desire_v = 0.8;
         swc.desired_xspeed = desire_v;
         stc.desired_xspeed = desire_v;
-        //leg控制  1000HZ
-        
-        // if(l_controller.get_action(&leg_cmd,1)==1){
-        //     leg_up = 1;
-        // }
-        // if(l_controller.get_stance_ifend()==1){
-        //     stance_end = 1;
-        // }
-        // if(l_controller.get_stance_ifbegin()==1){
-        //     stance_begin = 1;
-            
-        // }
-        // if(l_controller.get_swdown_ifbegin()==1){
-        //     leg_down = 1;
-        //     optm_tau = leg_state.optmT;
-        // }
-
-        // poserror = l_controller.get_error();
-
-        l_controller.get_action(&leg_cmd);
+        //leg控制  500HZ
+        //0 initial
+        //1 pd+force
+        //2 pure force
+        l_controller.get_action(&leg_cmd,1);
+        stance = gait_gen.leg_state[0];
         //驱动leg执行器
-        // motor_control(leg_cmd);
+        motor_control(leg_cmd);
+        
         
         //打印数据
         // for(int j=0;j<6;j++){
@@ -734,7 +701,7 @@ void* legcontrol_thread(void* args)
         _maxRuntime = std::max(_maxRuntime, _lastRuntime);
         // cout<<"maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
-        cout<<"Runtime:"<<_lastRuntime<<endl;
+        // cout<<"Runtime:"<<_lastRuntime<<endl;
 
         // cout<<leg_state.varphi/ PI * 180.0<<endl;
         
@@ -793,7 +760,7 @@ void* record_thread(void* args)
                 << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
                 << leg_state.varphi << ", "<< poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
                 << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< optm_result << ", "
+                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "
                 << std::endl;
 
 
@@ -825,7 +792,7 @@ int main(int argc, char **argv)
     setup_motors();
 
     //判断leg硬件是否就绪
-    // while(can0_recieved == 0 || can1_recieved == 0);
+    while(can0_recieved == 0 || can1_recieved == 0);
 
     sleep(1);
     legstate_update();
@@ -833,6 +800,7 @@ int main(int argc, char **argv)
 
     //腿初始化
     setpoint(0.16,0.08,-0.12);
+    setpoint1(0.04,0.13,-0.34);
     cout<<"leg init finished!"<<endl;
 
     legstate_update();
@@ -842,7 +810,7 @@ int main(int argc, char **argv)
     printf("\r\n");
 
     //判断bike硬件是否就绪
-    // while(bike_begin == 0);
+    while(bike_begin == 0);
     time_t tt = time(NULL);
     strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
 
@@ -856,7 +824,7 @@ int main(int argc, char **argv)
     }
 
     reset_motors();
-    cout<<"down!"<<endl;
+    cout<<"done!"<<endl;
 
     /* Join the thread and wait until it is done */
     // pthread_t thread;
@@ -928,15 +896,15 @@ void thread_setup(void){
         cout << "pthread_create4 error: error_code=" << ret << endl;
     }
 
-    param.sched_priority = 47;
-    ret = pthread_attr_setschedparam(&attr, &param);
-    pthread_attr_getschedparam(&attr, &param);
-    cout<<"usepy_thread prior:"<<param.sched_priority<<endl;
+    // param.sched_priority = 47;
+    // ret = pthread_attr_setschedparam(&attr, &param);
+    // pthread_attr_getschedparam(&attr, &param);
+    // cout<<"usepy_thread prior:"<<param.sched_priority<<endl;
 
-    ret = pthread_create(&tids[5], &attr, usepy_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create5 error: error_code=" << ret << endl;
-    }
+    // ret = pthread_create(&tids[5], &attr, usepy_thread, NULL);
+    // if (ret != 0){
+    //     cout << "pthread_create5 error: error_code=" << ret << endl;
+    // }
 
 }
 
@@ -1175,6 +1143,70 @@ void setpoint(float x,float y,float z){
             cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,8,0.2,0);
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,8,0.2,0);
+            can1_tx(R_msgs[i].data,i+1+bias);
+            Sleep_us(300);
+        }
+        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
+        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+    }
+}
+
+void setpoint1(float x,float y,float z){
+    /***  进行点位控制  ***/
+    CBData cbdata[6];
+    //获取当前关节位置和速度
+    cb_trans(cbmsg,cbdata);
+    angle[0].q[0] = cbdata[0].p;
+    angle[0].q[1] = cbdata[1].p;
+    angle[0].q[2] = cbdata[2].p;
+    angleV[0].q[0] = cbdata[0].v;
+    angleV[0].q[1] = cbdata[1].v;
+    angleV[0].q[2] = cbdata[2].v;
+    angle[1].q[0] = cbdata[3].p;
+    angle[1].q[1] = cbdata[4].p;
+    angle[1].q[2] = cbdata[5].p;
+    angleV[1].q[0] = cbdata[3].v;
+    angleV[1].q[1] = cbdata[4].v;
+    angleV[1].q[2] = cbdata[5].v;
+
+    //求正运动学，计算当前末端位置；求雅可比，计算当前末端速度
+    Kinematics(&angle[0],&p0[0],0);
+    Kinematics(&angle[1],&p0[1],1);
+    v0[0].x = 0;
+    v0[0].y = 0;
+    v0[0].z = 0;
+    v0[1].x = 0;
+    v0[1].y = 0;
+    v0[1].z = 0;
+//		pos_Inf(&p0[0]);
+//		pos_Inf(&p0[1]);
+    
+    //输入期望位置和速度
+    pdes[0].x = x;
+    pdes[0].y = y;
+    pdes[0].z = z;
+    vdes[0].x = 0;
+    vdes[0].y = 0;
+    vdes[0].z = 0;   
+    pdes[1].x = x;
+    pdes[1].y = -y;
+    pdes[1].z = z;
+    vdes[1].x = 0;
+    vdes[1].y = 0;
+    vdes[1].z = 0;
+    
+    //三次样条插补，逆运动学，pd控制
+    init_chabu(&pdes[0],&vdes[0],&p0[0],&v0[0],Iter,0);
+    init_chabu(&pdes[1],&vdes[1],&p0[1],&v0[1],Iter,1);
+    for(int j=0;j<Iter;j++){	
+        chabu(&nextpos[0],j+1,0);
+        Inv_kinematics(&L_angle,&nextpos[0],0);
+        chabu(&nextpos[1],j+1,1);
+        Inv_kinematics(&R_angle,&nextpos[1],1);
+        for(int i=0;i<3;i++){
+            cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,20,0.2,0);
+            can0_tx(L_msgs[i].data,i+1);
+            cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,20,0.2,0);
             can1_tx(R_msgs[i].data,i+1+bias);
             Sleep_us(300);
         }

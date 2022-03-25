@@ -59,6 +59,6 @@ void gait_generator::update(float current_time){
         //     leg_state[i] = Lose_Contact;
         // }
     }
-    std::cout<<"left: "<<leg_state[0]<<","<<normalized_phase[0]<<std::endl;
-    std::cout<<"righ: "<<leg_state[1]<<","<<normalized_phase[1]<<std::endl;
+    // std::cout<<"left: "<<leg_state[0]<<","<<normalized_phase[0]<<std::endl;
+    // std::cout<<"righ: "<<leg_state[1]<<","<<normalized_phase[1]<<std::endl;
 }

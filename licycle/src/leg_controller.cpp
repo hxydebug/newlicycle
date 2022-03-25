@@ -37,10 +37,16 @@ Angle init_angle[2];
 
 leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_leg_controller *swc, stance_leg_controller *stc){
 	leg = robot;
-
+	leg_controller::set_PDGain();
+	posT.resize(6);
+  	angT.resize(6);
 	//set the initial position
-	set_xyz(l_leg,&init_angle[0],0.16,0.08,-0.12);
-  	set_xyz(r_leg,&init_angle[1],0.16,-0.08,-0.12);
+	set_xyz(l_leg,&init_angle[0],0.04,0.13,-0.34);
+  	set_xyz(r_leg,&init_angle[1],0.04,-0.13,-0.34);
+
+	posT << init_angle[0].q[0],init_angle[0].q[1],init_angle[0].q[2],
+          init_angle[1].q[0],init_angle[1].q[1],init_angle[1].q[2];
+  	angT << 0,0,0,0,0,0;
 
 	Kinematics(&init_angle[0],&init_pos[0],0);
     Kinematics(&init_angle[1],&init_pos[1],1);
@@ -55,6 +61,15 @@ leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_l
 	swctr = swc;
 	stctr = stc;
 }
+
+void leg_controller::set_PDGain(){
+	pGain.resize(6);
+	dGain.resize(6);
+	pGain.setConstant(20.0);
+	dGain.setConstant(0.2);
+
+}
+
 void leg_controller::get_inform(double i0,double i1,double i2,double i3,double i4,double i5){
 	information.q[0] = i0;
 	information.q[1] = i1;
@@ -72,33 +87,62 @@ Posdiff leg_controller::get_error(void){
 	return poserror;
 }
 
-void leg_controller::get_action(Leg_command *cmd){
-	gait_generate->update(timer);
-    swctr->update(timer);
-    Eigen::VectorXd stc_tau(6);
-    stc_tau.setConstant(0);
-    // Eigen::VectorXd swc_tau(6);
-    // swc_tau.setConstant(0);
-
-    // Eigen::VectorXd stc_tau = stctr->get_action();
-    Eigen::VectorXd swc_tau = swctr->get_action();
-
-    Eigen::VectorXd ltau(3),rtau(3);
-    if(gait_generate->leg_state[0]==stance_leg || gait_generate->leg_state[0]==Early_Contact){
-      ltau = stc_tau.head(3);
-    }
-    else{
-      ltau = swc_tau.head(3);
-    }
-    if(gait_generate->leg_state[1]==stance_leg || gait_generate->leg_state[1]==Early_Contact){
-      rtau = stc_tau.tail(3);
-    }
-    else{
-      rtau = swc_tau.tail(3);
-    }
+void leg_controller::get_action(Leg_command *cmd, int Run_mode){
 
 	Eigen::VectorXd Tau_e(6);
-    Tau_e << ltau,rtau;
+	// calculate the current joint angles
+	Eigen::VectorXd cur_angle(6);
+	Eigen::VectorXd cur_angleV(6);
+	for(int i(0);i<6;i++){
+			cur_angle[i] = leg->cbdata[i].p;
+			cur_angleV[i] = leg->cbdata[i].v;
+	}
+
+	if(Run_mode==0){
+		pGain.setConstant(20.0);
+		
+		Tau_e = leg_controller::tau(cur_angle,cur_angleV,posT,angT);
+	}
+	else{
+		gait_generate->update(timer);
+		swctr->update(timer);
+		// Eigen::VectorXdc_tau(6);
+		// swc_tau.setConstant stc_tau(6);
+		// stc_tau.setConstant(0);
+		// Eigen::VectorXd sw(0);
+
+		Eigen::VectorXd stc_tau = stctr->get_action();
+		Eigen::VectorXd swc_tau = swctr->get_action();
+
+		if(Run_mode==1){
+			// pGain<<6.0,6.0,6.0,5.0,5.0,5.0;
+			pGain.setConstant(10);
+		}
+		if(Run_mode==2){
+			pGain.setConstant(0);
+		}
+
+		auto Tau_t = leg_controller::tau(cur_angle,cur_angleV,posT,angT);
+
+		Eigen::VectorXd ltau(3),rtau(3);
+		if(gait_generate->leg_state[0]==stance_leg || gait_generate->leg_state[0]==Early_Contact){
+		ltau = stc_tau.head(3)+Tau_t.head(3);
+		}
+		else{
+		ltau = swc_tau.head(3);
+		}
+		if(gait_generate->leg_state[1]==stance_leg || gait_generate->leg_state[1]==Early_Contact){
+		rtau = stc_tau.tail(3)+Tau_t.tail(3);
+		}
+		else{
+		rtau = swc_tau.tail(3);
+		}
+
+		Tau_e << ltau,rtau;
+		timer += 0.002;
+	}
+
+	
 	for(int i(0);i<6;i++){
 		cmd->torque[i] = Tau_e[i];
 	}
@@ -108,11 +152,16 @@ void leg_controller::get_action(Leg_command *cmd){
 		if(cmd->torque[i] < -18.0) cmd->torque[i] = -18.0;
 		if(cmd->torque[i] > 18.0) cmd->torque[i] = 18.0;
 	}
-	cout<<Tau_e<<endl;
-    timer += 0.002;
+	// cout<<Tau_e<<endl;
 }
 
-int leg_controller::get_action(Leg_command *cmd,int impact_happen){
+Eigen::VectorXd leg_controller::tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT){
+  
+  return dGain.cwiseProduct(vT-vA) + pGain.cwiseProduct(pT-pA);
+
+}
+
+int leg_controller::get_action1(Leg_command *cmd,int impact_happen){
 
 	int impulse_able = 0;
 	this->stance_end = 0;

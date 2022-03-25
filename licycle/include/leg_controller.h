@@ -88,8 +88,8 @@ class leg_controller{
 
 public:
 	leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_leg_controller *swc, stance_leg_controller *stc);
-	void get_action(Leg_command *cmd);
-	int get_action(Leg_command *cmd,int impact_happen);
+	void get_action(Leg_command *cmd,int Run_mode);
+	int get_action1(Leg_command *cmd,int impact_happen);
 	void goto_xyz(float xx,float yy,float zz,Leg direction);
 	void get_inform(double i0,double i1,double i2,double i3,double i4,double i5);
 	void get_Tau(double Tau);
@@ -100,6 +100,8 @@ public:
 	void set_height(double height);
 	double get_F(void);
 	Posdiff get_error(void);
+	void set_PDGain();
+	Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
 
 private:
 	Leg_state *leg;
@@ -109,6 +111,8 @@ private:
 	Position position[2];
 	Position velocity[2];
 	Posdiff poserror;
+	Eigen::VectorXd pGain,dGain;
+	Eigen::VectorXd posT,angT;
 
 	int stance_end;
 	int stance_begin;

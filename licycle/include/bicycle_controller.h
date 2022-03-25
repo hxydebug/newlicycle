@@ -48,7 +48,7 @@ public:
 	bicycle_controller(Bike_state *robot,char *ch);
 	void initial_param();
 	void get_action(Bike_command *cmd,int eic_able,int include_u,int eic_unable,float leg_torque);
-	float get_action(Bike_command *cmd);
+	float get_action(Bike_command *cmd,int Run_mode);
 	double get_timer();
 	Input get_input();
 	void balanceCalc();

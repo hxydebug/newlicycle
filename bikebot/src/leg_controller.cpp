@@ -25,7 +25,7 @@ float global_Tau;
 int if_getTau = 0;
 double collision_height;
 
-int impact_happened = 0;
+int impact_happened = 1;
 int timeflag = 0;
 int timecount = 0;
 int start_count = 0;
@@ -109,22 +109,22 @@ int leg_controller::get_action(Leg_command *cmd,int impact_happen){
 	// 	}
 	// }
 
-	if(leg->accx<-0.7 && timeflag == 0){
-		impact_happened = 1;
-		timeflag = 1;
-		timecount = 0;
-		start_count=1;
-	}
+	// if(leg->accx<-0.7 && timeflag == 0){
+	// 	impact_happened = 1;
+	// 	timeflag = 1;
+	// 	timecount = 0;
+	// 	start_count=1;
+	// }
 
-	if(start_count==1){
-		timecount++;
-		// timeflag=1;
-		if(timecount>1200){
-			timecount=0;
-			timeflag=0;
-			start_count=0;
-		}
-	}
+	// if(start_count==1){
+	// 	timecount++;
+	// 	// timeflag=1;
+	// 	if(timecount>1200){
+	// 		timecount=0;
+	// 		timeflag=0;
+	// 		start_count=0;
+	// 	}
+	// }
 	// infer the leg to run
 	Leg leg_dir;
 	if(impact_happened==1){

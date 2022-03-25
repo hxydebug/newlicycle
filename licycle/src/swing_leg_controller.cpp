@@ -2,7 +2,7 @@
 
 float _KP = 0.03;
 float foot_clearance = 0.01;
-float desired_height = 0.33;
+float desired_height = 0.34;
 
 
 swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_generator,float desired_speed){
@@ -26,8 +26,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   _desired_height << 0,0,desired_height-foot_clearance;
   angles.setConstant(0);
   action.setConstant(0);
-  hip_positions[0] << detx,wid/2+0.13,detz;
-  hip_positions[1] << detx,-wid/2-0.13,detz;
+  hip_positions[0] << detx+0.02,wid/2+0.13,detz;
+  hip_positions[1] << detx+0.02,-wid/2-0.13,detz;
 
   swing_leg_controller::set_PDGain();
 
@@ -108,8 +108,8 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
 void swing_leg_controller::set_PDGain(){
 	pGain.resize(6);
 	dGain.resize(6);
-	pGain.setConstant(200.0);
-	dGain.setConstant(1);
+	pGain.setConstant(20.0);
+	dGain.setConstant(0.5);
 
 }
 

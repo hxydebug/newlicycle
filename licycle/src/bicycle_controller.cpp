@@ -141,18 +141,26 @@ void bicycle_controller::get_action(Bike_command *cmd,int eic_able,int include_u
 	}
 }
 
-float bicycle_controller::get_action(Bike_command *cmd){
+float bicycle_controller::get_action(Bike_command *cmd,int Run_mode){
 	
-	///run the controller
 	bicycle_controller::stateUpdate();
-	bicycle_controller::balanceCalc();
-	// bicycle_controller::balance();
-
-	// cout<<leg_t<<endl;
-
-	///get the control input
-	cmd->phi = phi_cmd;
-	cmd->speed = 1550;
+	///run the controller
+	// 0 velocity, 0 degree steer
+	if(Run_mode==0){
+		cmd->phi = 0;
+		cmd->speed = 0;
+	}
+	// 0.5 velocity, 0 degree steer
+	else if(Run_mode==1){
+		cmd->phi = 0;
+		cmd->speed = 1400;
+	}
+	else{
+		bicycle_controller::balanceCalc();
+		///get the control input
+		cmd->phi = phi_cmd;
+		cmd->speed = 1550;
+	}
 
 	///some limit
 	// stop the car
@@ -160,10 +168,9 @@ float bicycle_controller::get_action(Bike_command *cmd){
 		cmd->speed = 0;
 	}
 	// prevent out of control
-	if(bikebot.timer<0.16){
-		cmd->phi = 0;
-	}
-
+	// if(bikebot.timer<0.16){
+	// 	cmd->phi = 0;
+	// }
 	return bikebot.vr;
 }
 
@@ -213,7 +220,8 @@ void bicycle_controller::stateUpdate(){
 
 	bikebot.vr = bike->bike_msg.velocity;
 	if(bikebot.timer==0) bikebot.vr=0.5;
-	if(bikebot.vr>1.4) bikebot.vr=1.4;
+	if(bikebot.vr>1.4&&bikebot.vr<=3) bikebot.vr=1.4;
+	if(bikebot.vr>3) bikebot.vr=0;
 	if(isnan(bikebot.vr)==1) bikebot.vr=1.3;
 
 	// bikebot.last_vr = bikebot.vr;
