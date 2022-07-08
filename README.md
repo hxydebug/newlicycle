@@ -1,4 +1,4 @@
-# newlicycle
+# Licycle
 The upper-level computer of the Licycle project
 ![image](https://user-images.githubusercontent.com/35949664/172154351-11d1be62-61a1-4635-ae05-d02ef72afad8.png)
 
