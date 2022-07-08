@@ -1,7 +1,7 @@
 # Licycle
-The upper-level computer of the Licycle project
-![image](https://user-images.githubusercontent.com/35949664/172154351-11d1be62-61a1-4635-ae05-d02ef72afad8.png)
+This Licycle project is about a bicycle-based robot which can cross obstacles without falling over. You can see the performance in the following video.
 
+[![Watch the video](https://user-images.githubusercontent.com/35949664/172154351-11d1be62-61a1-4635-ae05-d02ef72afad8.png)](https://youtu.be/kf8eAVD_ZEQ)
 #### Introduction
 A part of Licycle project, the code of the upper-level computer.
 
