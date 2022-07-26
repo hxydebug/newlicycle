@@ -1,7 +1,8 @@
 # This Licycle project is about a bicycle-based robot which can cross obstacles without falling over
 You can see the performance in the following video.
 
-[![Watch the video](http://img.youtube.com/vi/kf8eAVD_ZEQ/0.jpg)](http://www.youtube.com/watch?v=kf8eAVD_ZEQ)
+[![Watch the video](http://img.youtube.com/vi/cyA_f5utthc/0.jpg)](http://www.youtube.com/watch?v=cyA_f5utthc)
+
 #### Introduction
 A part of Licycle project, the code of the upper-level computer.
 
