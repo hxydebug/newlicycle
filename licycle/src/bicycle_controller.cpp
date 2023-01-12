@@ -39,12 +39,12 @@ double body_a1 = 25, body_a0 = 180;
 // double body_a1 = 1, body_a0 = 1;
 
 double body_k = 1.05;
-double limit = 0.2;
+double limit = 0.1;
 
 double body_vr = 1.2;
 double tire_omega = body_vr/body_R;
 // double LIMIT_STEER = 50.0 * PI / 180.0;
-double LIMIT_STEER = 3;
+double LIMIT_STEER = 0.3;//3
 double new_Wt = -PI/2;
 double dt = 0.02;
 
@@ -159,7 +159,7 @@ float bicycle_controller::get_action(Bike_command *cmd,int Run_mode){
 		bicycle_controller::balanceCalc();
 		///get the control input
 		cmd->phi = phi_cmd;
-		cmd->speed = 1550;
+		cmd->speed = 1450;//1550
 	}
 
 	///some limit

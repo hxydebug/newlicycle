@@ -3,7 +3,8 @@
 float _KP = 0.03;
 float foot_clearance = 0.01;
 float desired_height = 0.34;
-
+float t_swing = 0.2;
+Eigen::Vector3d dP;
 
 swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_generator,float desired_speed){
   licycle = bike;
@@ -26,8 +27,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   _desired_height << 0,0,desired_height-foot_clearance;
   angles.setConstant(0);
   action.setConstant(0);
-  hip_positions[0] << detx+0.02,wid/2+0.13,detz;
-  hip_positions[1] << detx+0.02,-wid/2-0.13,detz;
+  hip_positions[0] << detx+0.07,wid/2+0.13,detz;
+  hip_positions[1] << detx+0.07,-wid/2-0.13,detz;
 
   swing_leg_controller::set_PDGain();
 

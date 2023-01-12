@@ -79,6 +79,7 @@ Leg_command leg_cmd;
 Bike_command bike_cmd;
 Posdiff poserror;
 float body_v = 0.1;
+float Max_p,Max_r;
 
 //if can start
 int bike_begin = 0;
@@ -608,7 +609,7 @@ void* bikecontrol_thread(void* args)
         // 0 0 velocity
         // 1 0.6 velocity
         // 2 eic 1.2m/s
-        body_v = b_controller.get_action(&bike_cmd,1);
+        body_v = b_controller.get_action(&bike_cmd,0);
         //驱动bike执行器
         drive_bike(bike_cmd);
         /********************** running end **********************/
@@ -668,7 +669,7 @@ void* legcontrol_thread(void* args)
         //更新数据
         legstate_update();
 
-        float desire_v = 0.8;
+        float desire_v = 0.0;//0.8
         swc.desired_xspeed = desire_v;
         stc.desired_xspeed = desire_v;
         //leg控制  500HZ
@@ -699,6 +700,8 @@ void* legcontrol_thread(void* args)
         // cout<<"lastPeriodTime:"<<_lastPeriodTime<<endl;
         _maxPeriod = std::max(_maxPeriod, _lastPeriodTime);
         _maxRuntime = std::max(_maxRuntime, _lastRuntime);
+        Max_p = _maxPeriod;
+        Max_r = _maxRuntime;
         // cout<<"maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
         // cout<<"Runtime:"<<_lastRuntime<<endl;
@@ -720,7 +723,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/1215/dataFile%s.txt", ch);
+    sprintf(result, "/home/hxy/1121/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -760,7 +763,7 @@ void* record_thread(void* args)
                 << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
                 << leg_state.varphi << ", "<< poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
                 << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "
+                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "<< Max_p << ", "<< Max_r
                 << std::endl;
 
 
@@ -800,7 +803,7 @@ int main(int argc, char **argv)
 
     //腿初始化
     setpoint(0.16,0.08,-0.12);
-    setpoint1(0.04,0.13,-0.34);
+    setpoint1(0.05,0.13,-0.34);//0.04
     cout<<"leg init finished!"<<endl;
 
     legstate_update();

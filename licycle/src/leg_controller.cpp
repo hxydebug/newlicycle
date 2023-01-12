@@ -41,8 +41,8 @@ leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_l
 	posT.resize(6);
   	angT.resize(6);
 	//set the initial position
-	set_xyz(l_leg,&init_angle[0],0.04,0.13,-0.34);
-  	set_xyz(r_leg,&init_angle[1],0.04,-0.13,-0.34);
+	set_xyz(l_leg,&init_angle[0],0.05,0.13,-0.34);
+  	set_xyz(r_leg,&init_angle[1],0.05,-0.13,-0.34);
 
 	posT << init_angle[0].q[0],init_angle[0].q[1],init_angle[0].q[2],
           init_angle[1].q[0],init_angle[1].q[1],init_angle[1].q[2];
@@ -116,7 +116,7 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode){
 
 		if(Run_mode==1){
 			// pGain<<6.0,6.0,6.0,5.0,5.0,5.0;
-			pGain.setConstant(10);
+			pGain.setConstant(8);//10
 		}
 		if(Run_mode==2){
 			pGain.setConstant(0);
@@ -126,16 +126,18 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode){
 
 		Eigen::VectorXd ltau(3),rtau(3);
 		if(gait_generate->leg_state[0]==stance_leg || gait_generate->leg_state[0]==Early_Contact){
-		ltau = stc_tau.head(3)+Tau_t.head(3);
+		// ltau = stc_tau.head(3)+Tau_t.head(3);
+			ltau = stc_tau.head(3);
 		}
 		else{
-		ltau = swc_tau.head(3);
+			ltau = swc_tau.head(3);
 		}
 		if(gait_generate->leg_state[1]==stance_leg || gait_generate->leg_state[1]==Early_Contact){
-		rtau = stc_tau.tail(3)+Tau_t.tail(3);
+		// rtau = stc_tau.tail(3)+Tau_t.tail(3);
+			rtau = stc_tau.tail(3);
 		}
 		else{
-		rtau = swc_tau.tail(3);
+			rtau = swc_tau.tail(3);
 		}
 
 		Tau_e << ltau,rtau;
@@ -148,9 +150,13 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode){
 	}
 
 	//torque_limit
-	for(int i(0);i<6;i++){
-		if(cmd->torque[i] < -18.0) cmd->torque[i] = -18.0;
-		if(cmd->torque[i] > 18.0) cmd->torque[i] = 18.0;
+	for(int i(0);i<3;i++){
+		if(cmd->torque[i] < -23.0) cmd->torque[i] = -23.0;
+		if(cmd->torque[i] > 23.0) cmd->torque[i] = 23.0;
+	}
+	for(int i(3);i<6;i++){
+		if(cmd->torque[i] < -21.0) cmd->torque[i] = -21.0;
+		if(cmd->torque[i] > 21.0) cmd->torque[i] = 21.0;
 	}
 	// cout<<Tau_e<<endl;
 }

@@ -1,7 +1,7 @@
 #ifndef __LICYCLE_CONFIG_H
 #define __LICYCLE_CONFIG_H
 
-#define USE_Leg 0
+#define USE_Leg 1
 #define USE_Collision_model 0
 #define USE_Optimizer 1
 #define USE_Touch_detect 1

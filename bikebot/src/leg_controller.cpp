@@ -25,7 +25,7 @@ float global_Tau;
 int if_getTau = 0;
 double collision_height;
 
-int impact_happened = 1;
+int impact_happened = 0;
 int timeflag = 0;
 int timecount = 0;
 int start_count = 0;

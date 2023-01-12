@@ -141,7 +141,7 @@ const int num_legs = 2;
 const int action_dim_ = num_legs * k3Dim;
 const int kStateDim = 4;
 const int planning_horizon = 4;
-const float time_step = 0.06;
+const float time_step = 0.05;
 const float kGravity = 9.8;
 const float kMaxScale = 10;
 const float kMinScale = 0.1;
@@ -150,7 +150,7 @@ float inv_mass = 1/body_mass;
 float Jb = 0.8;
 float Jt = body_mass*hG*hG + Jb;
 float alpha = 0.0001;
-const std::vector<double> qp_weights {1.0,1.0,1.0,1.0};
+const std::vector<double> qp_weights {200.0,1.0,1.0,1.0};
 std::vector<float> foot_friction_coeffs {0.45,0.45};
 
 ConvexMpc::ConvexMpc()

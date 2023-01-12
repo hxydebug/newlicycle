@@ -40,7 +40,7 @@ double body_a1 = 25, body_a0 = 180;
 // double body_a1 = 1, body_a0 = 1;
 
 double body_k = 1.05;
-double limit = 0.2;
+double limit = 0.3;
 
 double body_vr = 1.2;
 double tire_omega = body_vr/body_R;

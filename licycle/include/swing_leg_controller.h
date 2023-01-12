@@ -21,6 +21,7 @@ private:
     Leg_state *licycle;
     std::vector<int> last_leg_state = {0,0};
     Position phase_switch_foot_local_position[2];
+    Position phase_switch_foot_local_position1[2];
     Eigen::VectorXd _desired_height;
     Eigen::VectorXd hip_positions[2];
     Eigen::VectorXd angles;
@@ -31,5 +32,12 @@ private:
 
 float gen_parabola(float phase, float start, float mid, float end);
 Position gen_swing_foot_trajectory(float input_phase, Position start_pos, Position end_pos);
+Eigen::VectorXd pd_tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT, float p_num, float d_num);
+
+// add the cycloid
+Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ);
+Position get_swing_foot_trajectory(float input_phase, Position start_pos, Position end_pos);
+Position get_swing_foot_trajectory1(float input_phase, Position start_pos, Position end_pos);
+
 
 #endif

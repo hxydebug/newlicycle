@@ -69,5 +69,6 @@ void reset_motors();
 void setup_motors();
 void drive_bike(Bike_command msg);
 void setpoint(float x,float y,float z);
+void setpoint1(float x,float y,float z);
 
 #endif
