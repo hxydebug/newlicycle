@@ -60,7 +60,7 @@ bicycle_controller::bicycle_controller(Bike_state *robot,char *ch){
 	bike = robot;
 	bicycle_controller::initial_param();
 	char result[100] = {0};
-	sprintf(result, "/home/hxy/1215/bike_data%s.txt", ch);
+	sprintf(result, "/home/hxy/0112/bike_data%s.txt", ch);
 	dataFile.open(result, ofstream::app);
 }
 

@@ -80,6 +80,8 @@ Bike_command bike_cmd;
 Posdiff poserror;
 float body_v = 0.1;
 float Max_p,Max_r;
+Position l_leg_p;
+Position r_leg_p;
 
 //if can start
 int bike_begin = 0;
@@ -99,6 +101,13 @@ int include_u = 0;
 int eic_unable = 0;
 float optm_tau = 0;
 int stance = 0;
+
+// gait_generator
+float v_body = 0;
+gait_generator gait_gen;
+stance_leg_controller stc(&leg_state,&gait_gen,v_body);
+Eigen::VectorXd stc_tau(6);
+
 
 //optimize
 double optm_result;
@@ -628,6 +637,63 @@ void* bikecontrol_thread(void* args)
     return NULL;
 }
 
+//compute_foot_grf_thread
+void* compute_foot_grf_thread(void* args)
+{
+
+    cout<<"compute_foot_grf start!"<<endl;
+
+    //初始化定时器
+    float _period = 0.002;
+    auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
+    int seconds = (int)_period;
+    int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
+    Timer t;
+    itimerspec timerSpec;
+    timerSpec.it_interval.tv_sec = seconds;
+    timerSpec.it_value.tv_sec = seconds;
+    timerSpec.it_value.tv_nsec = nanoseconds;
+    timerSpec.it_interval.tv_nsec = nanoseconds;
+    timerfd_settime(timerFd, 0, &timerSpec, nullptr);
+    unsigned long long missed = 0;
+    float _lastRuntime = 0;
+    float _lastPeriodTime = 0;
+    float _maxPeriod = 0;
+    float _maxRuntime = 0;
+
+    while(!shut_down)
+    {
+        //计时
+        _lastPeriodTime = (float)t.getSeconds();
+        t.start();
+
+        /********************** running begin **********************/
+        //更新数据
+        legstate_update();
+
+        float desire_v = 0.5;//0.8
+        stc.desired_xspeed = desire_v;
+        //calculate grf  500HZ
+        stc_tau = stc.get_action();
+
+
+        /********************** running end **********************/
+
+        _lastRuntime = (float)t.getSeconds();
+        _maxPeriod = std::max(_maxPeriod, _lastPeriodTime);
+        _maxRuntime = std::max(_maxRuntime, _lastRuntime);
+        Max_p = _maxPeriod;
+        Max_r = _maxRuntime;
+        
+        /// 延时
+        int m = read(timerFd, &missed, sizeof(missed));
+        (void)m;
+
+    }
+    return NULL;
+
+}
+
 //legcontrol_thread
 void* legcontrol_thread(void* args)
 {
@@ -635,10 +701,7 @@ void* legcontrol_thread(void* args)
     cout<<"leg controller start!"<<endl;
 
     //初始化控制器
-    float v_body = 1.2;
-    gait_generator gait_gen;
  	swing_leg_controller swc(&leg_state,&gait_gen,v_body);
- 	stance_leg_controller stc(&leg_state,&gait_gen,v_body);
     leg_controller l_controller(&leg_state,&gait_gen,&swc,&stc);
 
     //初始化定时器
@@ -669,15 +732,16 @@ void* legcontrol_thread(void* args)
         //更新数据
         legstate_update();
 
-        float desire_v = 0.0;//0.8
+        float desire_v = 0.5;//0.8
         swc.desired_xspeed = desire_v;
-        stc.desired_xspeed = desire_v;
         //leg控制  500HZ
         //0 initial
         //1 pd+force
-        //2 pure force
-        l_controller.get_action(&leg_cmd,1);
+
+        l_controller.get_action(&leg_cmd,1,stc_tau);
         stance = gait_gen.leg_state[0];
+        l_leg_p = swc.postarget[0];
+        r_leg_p = swc.postarget[1];
         //驱动leg执行器
         motor_control(leg_cmd);
         
@@ -723,7 +787,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/1121/dataFile%s.txt", ch);
+    sprintf(result, "/home/hxy/0112/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -763,7 +827,11 @@ void* record_thread(void* args)
                 << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
                 << leg_state.varphi << ", "<< poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
                 << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "<< Max_p << ", "<< Max_r
+                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "<< Max_p << ", "<< Max_r << ", "
+                << l_leg_p.x << ", "<< l_leg_p.y << ", "<< l_leg_p.z << ", "
+                << r_leg_p.x << ", "<< r_leg_p.y << ", "<< r_leg_p.z << ", "
+                << stc_tau[0] << ", "<< stc_tau[1] << ", "<< stc_tau[2] << ", "
+                << stc_tau[3] << ", "<< stc_tau[4] << ", "<< stc_tau[5]
                 << std::endl;
 
 
@@ -784,6 +852,7 @@ void* record_thread(void* args)
 int main(int argc, char **argv)
 {
     cout << "main_thread" << endl;
+    stc_tau.setConstant(0);
 
     //初始化can0，can1
     CAN_init();
@@ -914,7 +983,7 @@ void thread_setup(void){
 void control_threadcreate(void){
     struct sched_param param;
     pthread_attr_t attr;
-    pthread_t tids[3];
+    pthread_t tids[4];
 
     /* Lock memory */
     if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
@@ -956,7 +1025,16 @@ void control_threadcreate(void){
     ret = pthread_attr_setschedparam(&attr, &param);
     pthread_attr_getschedparam(&attr, &param);
     cout<<"legc_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids[1], &attr, legcontrol_thread, NULL);
+    ret = pthread_create(&tids[1], &attr, compute_foot_grf_thread, NULL);
+    if (ret != 0){
+        cout << "ctr_pthread_create1 error: error_code=" << ret << endl;
+    }
+
+    param.sched_priority = 99;
+    ret = pthread_attr_setschedparam(&attr, &param);
+    pthread_attr_getschedparam(&attr, &param);
+    cout<<"legc_thread prior:"<<param.sched_priority<<endl;
+    ret = pthread_create(&tids[2], &attr, legcontrol_thread, NULL);
     if (ret != 0){
         cout << "ctr_pthread_create1 error: error_code=" << ret << endl;
     }
@@ -965,7 +1043,7 @@ void control_threadcreate(void){
     ret = pthread_attr_setschedparam(&attr, &param);
     pthread_attr_getschedparam(&attr, &param);
     cout<<"record_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids[2], &attr, record_thread, NULL);
+    ret = pthread_create(&tids[3], &attr, record_thread, NULL);
     if (ret != 0){
         cout << "record_pthread error: error_code=" << ret << endl;
     }
@@ -1074,6 +1152,23 @@ void motor_control(Leg_command leg_cmd){
     cmd_transfer(i+1,&L_msgs[i],0,0,0,0,leg_cmd.torque[i]);
     can0_tx(L_msgs[i].data,i+1);
     cmd_transfer(i+4,&R_msgs[i],0,0,0,0,leg_cmd.torque[i+3]);
+    can1_tx(R_msgs[i].data,i+1+bias);
+}
+
+void motor_cmd_write(Motor_cmd Mcmd){
+    int i;
+    for(i=0;i<2;i++){
+        cmd_transfer(i+1, &L_msgs[i], Mcmd.cmd[i].p, Mcmd.cmd[i].v, Mcmd.cmd[i].kp, Mcmd.cmd[i].kd, Mcmd.cmd[i].t);
+        can0_tx(L_msgs[i].data,i+1);
+        cmd_transfer(i+4, &R_msgs[i], Mcmd.cmd[i+3].p, Mcmd.cmd[i+3].v, Mcmd.cmd[i+3].kp, Mcmd.cmd[i+3].kd, Mcmd.cmd[i+3].t);
+        can1_tx(R_msgs[i].data,i+1+bias);
+        //延时
+        Sleep_us(300);
+	}
+    i = 2;
+    cmd_transfer(i+1, &L_msgs[i], Mcmd.cmd[i].p, Mcmd.cmd[i].v, Mcmd.cmd[i].kp, Mcmd.cmd[i].kd, Mcmd.cmd[i].t);
+    can0_tx(L_msgs[i].data,i+1);
+    cmd_transfer(i+4, &R_msgs[i], Mcmd.cmd[i+3].p, Mcmd.cmd[i+3].v, Mcmd.cmd[i+3].kp, Mcmd.cmd[i+3].kd, Mcmd.cmd[i+3].t);
     can1_tx(R_msgs[i].data,i+1+bias);
 }
 

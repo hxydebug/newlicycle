@@ -1,7 +1,7 @@
 #include "gait_generator.h"
 #include <iostream>
 
-Eigen::Vector2d nominal_stance_duration(0.2, 0.2);
+Eigen::Vector2d nominal_stance_duration(t_stance, t_stance);
 Eigen::Vector2d nominal_stance_dutyrate(0.5, 0.5);
 float nominal_contact_detection_phase = 0.1;
 

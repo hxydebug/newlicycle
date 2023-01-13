@@ -2,8 +2,8 @@
 
 float _KP = 0.03;
 float foot_clearance = 0.01;
-float desired_height = 0.34;
-float t_swing = 0.2;
+float desired_height = 0.345;
+float t_swing = t_stance;
 Eigen::Vector3d dP;
 
 swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_generator,float desired_speed){
@@ -47,6 +47,9 @@ void swing_leg_controller::update(float current_time){
     if(new_leg_state[i]==swing_leg && new_leg_state[i] != last_leg_state[i]){
       phase_switch_foot_local_position[i] = getFootPositionInBaswFrame(nowang,i);
     }
+    if (new_leg_state[i]==stance_leg && new_leg_state[i] != last_leg_state[i]) {
+      phase_switch_foot_local_position1[i] = getFootPositionInBaswFrame(nowang,i);
+    }
   }
 
   last_leg_state = new_leg_state;
@@ -56,44 +59,8 @@ void swing_leg_controller::update(float current_time){
 Eigen::VectorXd swing_leg_controller::get_action(void){
 
   Eigen::VectorXd com_velocity(3);
-  Eigen::VectorXd anglesV(6);
-  anglesV.setConstant(0);
-
   com_velocity << licycle->body_v,0,0;
-  // std::cout<<"velocity:"<<licycle->get_base_v()<<std::endl;
-  for(int i(0);i<2;i++){
-    if(_gait_generator->leg_state[i]==stance_leg || _gait_generator->leg_state[i]==Early_Contact){
-      continue;
-    }
-  
-    auto hip_horizontal_velocity = com_velocity;
 
-    Eigen::VectorXd target_hip_horizontal_velocity(3);
-    target_hip_horizontal_velocity << desired_xspeed,0,0;
-    // std::cout<<"666"<<std::endl;
-    Eigen::VectorXd foot_target_position = (hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 - _KP*
-                                (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-                                + hip_positions[i];
-    // foot_target_position[0]=0.2;
-    // std::cout<<foot_target_position[0]<<std::endl;
-    Position end_position;
-    end_position.x = foot_target_position[0];
-    end_position.y = foot_target_position[1];
-    end_position.z = foot_target_position[2];
-
-    Position foot_position = gen_swing_foot_trajectory(_gait_generator->normalized_phase[i],phase_switch_foot_local_position[i],end_position);
-    postarget[i] = foot_position;
-    //get joint[i] angles
-    Angle ans;
-    Inv_kinematics_global(&ans,&foot_position,i);
-    // std::cout<<"666:"<<std::endl;
-    for(int j(0);j<3;j++){
-      angles[3*i+j] = ans.q[j];
-      // std::cout<<ans.q[j]<<std::endl;
-    }
-    
-
-  }
   Eigen::VectorXd nowang(6);
   Eigen::VectorXd nowangV(6);
   for(int i(0);i<6;i++){
@@ -101,7 +68,93 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
         nowangV[i] = licycle->cbdata[i].v;
   }
 
-  return swing_leg_controller::tau(nowang,nowangV,angles,anglesV);
+  Eigen::Vector3d legpos[2];
+  legpos[0] = nowang.head(3);
+  legpos[1] = nowang.tail(3);
+  Eigen::Vector3d legvel[2];
+  legvel[0] = nowangV.head(3);
+  legvel[1] = nowangV.tail(3);
+
+  Eigen::VectorXd leg_motor_torque(6);
+  leg_motor_torque.setConstant(0);
+  Eigen::Vector3d motor_torque[2];
+
+  // mass point velocity
+  Eigen::VectorXd hip_horizontal_velocity = com_velocity;
+  Eigen::VectorXd target_hip_horizontal_velocity(3);
+  target_hip_horizontal_velocity << desired_xspeed,0,0;
+
+  for(int i(0);i<2;i++){
+
+    if(_gait_generator->leg_state[i]==stance_leg || _gait_generator->leg_state[i]==Early_Contact){
+
+      Eigen::VectorXd foot_target_position1 = (-hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 + _KP*
+                                  (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
+                                  + hip_positions[i];
+      
+      Position end_position1;
+      end_position1.x = foot_target_position1[0];
+      end_position1.y = foot_target_position1[1];
+      end_position1.z = foot_target_position1[2];
+
+      Position foot_position1 = get_swing_foot_trajectory1(_gait_generator->normalized_phase[i],phase_switch_foot_local_position1[i],end_position1);
+      postarget[i] = foot_position1;
+
+      //get joint[i] angles
+      Angle ans1;
+      Inv_kinematics_global(&ans1,&foot_position1,i);
+      Eigen::Vector3d angs;
+      for(int j(0);j<3;j++){
+        angs[j] = ans1.q[j];
+      }
+
+      //get joint[i] anglesV
+      Eigen::Vector3d ansV;
+      ansV.setConstant(0);
+
+      // stance phase
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 10.0, 0.5);
+
+    }
+  
+    else{
+      // std::cout<<"666"<<std::endl;
+      Eigen::VectorXd foot_target_position = (hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 - _KP*
+                                  (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
+                                  + hip_positions[i];
+      // foot_target_position[0]=0.2;
+      // std::cout<<foot_target_position[0]<<std::endl;
+      Position end_position;
+      end_position.x = foot_target_position[0];
+      end_position.y = foot_target_position[1];
+      end_position.z = foot_target_position[2];
+
+      Position foot_position = get_swing_foot_trajectory(_gait_generator->normalized_phase[i],phase_switch_foot_local_position[i],end_position);
+      postarget[i] = foot_position;
+
+      //get joint[i] angles
+      Angle ans;
+      Inv_kinematics_global(&ans,&foot_position,i);
+      Eigen::Vector3d angs;
+      for(int j(0);j<3;j++){
+        angs[j] = ans.q[j];
+      }
+
+      //get joint[i] anglesV
+      Eigen::Vector3d ansV;
+      ansV = calcu_Jaco(legpos[i],i).inverse()*dP;
+
+      // swing phase
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 50.0, 1);
+
+    }
+    
+
+  }
+
+
+  leg_motor_torque << motor_torque[0], motor_torque[1];
+  return leg_motor_torque;
 
 
 }
@@ -117,6 +170,16 @@ void swing_leg_controller::set_PDGain(){
 Eigen::VectorXd swing_leg_controller::tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT){
   
   return dGain.cwiseProduct(vT-vA) + pGain.cwiseProduct(pT-pA);
+
+}
+
+Eigen::VectorXd pd_tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT, float p_num, float d_num){
+  
+  Eigen::VectorXd p_gain(3);
+  Eigen::VectorXd d_gain(3);
+  p_gain.setConstant(p_num);
+  d_gain.setConstant(d_num);
+  return d_gain.cwiseProduct(vT-vA) + p_gain.cwiseProduct(pT-pA);
 
 }
 
@@ -168,6 +231,63 @@ Position gen_swing_foot_trajectory(float input_phase, Position start_pos, Positi
   float max_clearance = 0.1;
   float mid = std::max(end_pos.z, start_pos.z) + max_clearance;
   pos.z = gen_parabola(phase, start_pos.z, mid, end_pos.z);
+
+  return pos;
+}
+
+// add the cycloid
+Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ){
+
+  period = period * t_whole;
+
+  if (isZ) {
+    t_whole = t_whole * 0.5;
+  }
+  float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
+  float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
+  float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+  Eigen::Vector3d ans;
+  ans << p_des, v_des, a_des;
+  return ans;
+}
+Position get_swing_foot_trajectory(float input_phase, Position start_pos, Position end_pos){
+  float phase = input_phase;
+
+  Eigen::Vector3d p_x;
+  Eigen::Vector3d p_y;
+  Eigen::Vector3d p_z;
+  Position pos;
+
+  p_x = simple_cal_p(start_pos.x, end_pos.x, phase, t_swing, false);
+  p_y = simple_cal_p(start_pos.y, end_pos.y, phase, t_swing, false);
+
+  float max_clearance = 0.1;
+  float mid = std::max(end_pos.z, start_pos.z) + max_clearance;
+  
+  if (phase < 0.5) {
+    p_z = simple_cal_p(start_pos.z, mid, phase, t_swing, true);
+  }
+  else {
+    p_z = simple_cal_p(mid, end_pos.z, phase-0.5, t_swing, true);
+  }
+  pos.x = p_x[0];
+  pos.y = p_y[0];
+  pos.z = p_z[0];
+
+  dP[0] = p_x[1];
+  dP[1] = p_y[1];
+  dP[2] = p_z[1];
+
+  return pos;
+}
+Position get_swing_foot_trajectory1(float input_phase, Position start_pos, Position end_pos){
+
+  float phase = input_phase;
+
+  Position pos;
+  pos.x = (1 - phase) * start_pos.x + phase * end_pos.x;
+  pos.y = (1 - phase) * start_pos.y + phase * end_pos.y;
+  pos.z = (1 - phase) * start_pos.z + phase * end_pos.z;
 
   return pos;
 }

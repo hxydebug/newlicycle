@@ -87,7 +87,7 @@ Posdiff leg_controller::get_error(void){
 	return poserror;
 }
 
-void leg_controller::get_action(Leg_command *cmd, int Run_mode){
+void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd stc_tau){
 
 	Eigen::VectorXd Tau_e(6);
 	// calculate the current joint angles
@@ -104,43 +104,40 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode){
 		Tau_e = leg_controller::tau(cur_angle,cur_angleV,posT,angT);
 	}
 	else{
+		//gait_generator
 		gait_generate->update(timer);
-		swctr->update(timer);
-		// Eigen::VectorXdc_tau(6);
-		// swc_tau.setConstant stc_tau(6);
+		
+		// ground reaction force calculate    ***** it can be put in another pthread *****
 		// stc_tau.setConstant(0);
-		// Eigen::VectorXd sw(0);
 
-		Eigen::VectorXd stc_tau = stctr->get_action();
+		// position controller
+		swctr->update(timer);
 		Eigen::VectorXd swc_tau = swctr->get_action();
 
-		if(Run_mode==1){
-			// pGain<<6.0,6.0,6.0,5.0,5.0,5.0;
-			pGain.setConstant(8);//10
-		}
-		if(Run_mode==2){
-			pGain.setConstant(0);
-		}
-
-		auto Tau_t = leg_controller::tau(cur_angle,cur_angleV,posT,angT);
-
 		Eigen::VectorXd ltau(3),rtau(3);
-		if(gait_generate->leg_state[0]==stance_leg || gait_generate->leg_state[0]==Early_Contact){
-		// ltau = stc_tau.head(3)+Tau_t.head(3);
-			ltau = stc_tau.head(3);
+		if (gait_generate->leg_state[0] == stance_leg || gait_generate->leg_state[0] == Early_Contact) {
+
+			ltau = swc_tau.head(3) + stc_tau.head(3);
+
 		}
-		else{
+		else {
+
 			ltau = swc_tau.head(3);
+
 		}
-		if(gait_generate->leg_state[1]==stance_leg || gait_generate->leg_state[1]==Early_Contact){
-		// rtau = stc_tau.tail(3)+Tau_t.tail(3);
-			rtau = stc_tau.tail(3);
+		if (gait_generate->leg_state[1] == stance_leg || gait_generate->leg_state[1] == Early_Contact) {
+
+			rtau = swc_tau.tail(3) + stc_tau.tail(3);
+
 		}
-		else{
+		else {
+
 			rtau = swc_tau.tail(3);
+
 		}
 
-		Tau_e << ltau,rtau;
+		Tau_e << ltau, rtau;
+
 		timer += 0.002;
 	}
 
